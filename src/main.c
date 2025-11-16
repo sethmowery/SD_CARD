@@ -15,70 +15,51 @@
 /*******************************************************************/
 
 void init_spi_sdcard() {
-    // fill in.
-    gpio_set_function(SD_SCK,  GPIO_FUNC_SPI);
+    // Configure SPI pins
+    gpio_set_function(SD_SCK, GPIO_FUNC_SPI);
     gpio_set_function(SD_MOSI, GPIO_FUNC_SPI);
     gpio_set_function(SD_MISO, GPIO_FUNC_SPI);
-
-    // -------- 2. Configure CS as normal GPIO --------
-    gpio_init(SD_CS);
+    
+    // Configure CS as GPIO (for manual control)
+    gpio_init(SD_CS)
+    ;
     gpio_set_dir(SD_CS, GPIO_OUT);
-    gpio_put(SD_CS, 1);   // CS high (inactive)
-
-    // -------- 3. Configure SPI peripheral --------
-    // Initialize SPI at 400 kHz for SD init
-    spi_init(spi1, 400 * 1000);
-
-    // Explicitly configure SPI format:
-    // data_bits = 8
-    // CPOL = 0 -> clock idle low
-    // CPHA = 0 -> sample on rising edge
-    spi_set_format(
-        spi1,
-        8,          // data bits
-        SPI_CPOL_0, // CPOL = 0
-        SPI_CPHA_0, // CPHA = 0
-        SPI_MSB_FIRST
-    );
+    gpio_put(SD_CS, 1);  // Set CS high (inactive)
+    
+    // Initialize SPI1 with 400 kHz baudrate, 8-bit data, CPOL=0, CPHA=0
+    spi_init(spi1, 400000);
+    spi_set_format(spi1, 8, SPI_CPOL_0, SPI_CPHA_0, SPI_MSB_FIRST);
 }
 
 void disable_sdcard() {
-    // fill in.
-    uint8_t ff = 0xFF;
-
-    // 1. Raise CS (deselect card)
+    // Set CS high (inactive)
     gpio_put(SD_CS, 1);
-
-    // 2. Send one dummy byte to give SD card some final clocks
-    spi_write_blocking(spi1, &ff, 1);
-
-    // 3. Temporarily "release" MOSI by switching it to GPIO high
-    gpio_set_function(SD_MOSI, GPIO_FUNC_SIO);  // MOSI becomes GPIO
+    
+    // Send 0xFF to give the SD card clock cycles to finish
+    uint8_t dummy = 0xFF;
+    spi_write_blocking(spi1, &dummy, 1);
+    
+    // Release MOSI line by making it a GPIO and setting it high
+    gpio_init(SD_MOSI);
     gpio_set_dir(SD_MOSI, GPIO_OUT);
-    gpio_put(SD_MOSI, 1); // force high (idle state)
+    gpio_put(SD_MOSI, 1);
 }
 
 void enable_sdcard() {
-    // fill in.
-    // 1. Bring MOSI back under SPI control
+    // Take control of MOSI line by making it an SPI pin again
     gpio_set_function(SD_MOSI, GPIO_FUNC_SPI);
-
-    // 2. Pull CS low to activate SD card
+    
+    // Set CS low (active)
     gpio_put(SD_CS, 0);
 }
 
 void sdcard_io_high_speed() {
-    // fill in.
-    // Change the SPI baudrate to 12 MHz
-    spi_set_baudrate(spi1, 12 * 1000 * 1000);
+    // Change SPI baudrate to 12 MHz
+    spi_set_baudrate(spi1, 12000000);
 }
 
 void init_sdcard_io() {
-    // fill in.
-    // Initialize SPI pins and configure SPI peripheral
     init_spi_sdcard();
-
-    // Set CS high and release MOSI (inactive state)
     disable_sdcard();
 }
 
